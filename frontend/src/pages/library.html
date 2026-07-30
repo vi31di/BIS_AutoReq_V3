@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Library - BIS LIS</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1.5rem;
+    }
+    .dropzone {
+      border: 2px dashed var(--border-color);
+      background-color: var(--bg-panel);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent-action);
+      background-color: #f0fdfa;
+    }
+    .dropzone svg {
+      color: var(--text-muted);
+      transition: color 0.15s ease;
+    }
+    .dropzone:hover svg {
+      color: var(--accent-action);
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background-color: #e2e8f0;
+      overflow: hidden;
+      margin-top: 1rem;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: var(--accent-action);
+      transition: width 0.2s ease;
+    }
+    .search-wrapper {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+    @media (max-width: 900px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar Navigation Shell -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      BIS LIS Dashboard
+    </div>
+    <ul class="nav-links">
+      <li><a href="index.html">Requirement Lookup</a></li>
+      <li><a href="library.html" class="active">Document Library</a></li>
+    </ul>
+    <div class="nav-user" id="user-menu-trigger">
+      <span id="nav-username">LIS Engineer</span>
+      <div class="avatar">E</div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="grid-container">
+
+      <!-- Left Column: Ingested Standards Library -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Ingested Document Library</h2>
+          </div>
+          
+          <div class="search-wrapper">
+            <input type="text" id="library-search" class="form-control" placeholder="Search by IS number, title, or status badge...">
+          </div>
+
+          <div class="data-table-wrapper">
+            <table class="data-table" id="library-table">
+              <thead>
+                <tr>
+                  <th>IS Document Address</th>
+                  <th>IS Number</th>
+                  <th>Revision</th>
+                  <th>Date Ingested</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="library-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Document Upload & Ingestion -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Ingest Standard PDF</h2>
+          </div>
+          
+          <div id="dropzone" class="dropzone">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            <p style="font-weight: 600; font-size: 0.9rem; margin-top: 0.5rem;">Drag & drop PDF here</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">or click to browse local files</p>
+            <input type="file" id="file-input" accept="application/pdf" style="display: none;">
+          </div>
+
+          <div id="upload-progress-container" style="display: none; margin-top: 1rem;">
+            <p class="form-label" id="progress-status" style="font-size: 0.75rem;">Uploading PDF Standard...</p>
+            <div class="progress-bar-container" style="display: block;">
+              <div id="progress-bar" class="progress-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Summary Modal -->
+  <div class="modal-overlay" id="summary-modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="summary-title">Ingestion Process Completed</h3>
+      </div>
+      <div class="modal-body" id="summary-body">
+        <!-- Dynamically populated with ingestion metrics -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="summary-close-btn" class="btn btn-primary">Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Authentication Check
+    if (sessionStorage.getItem('bis_authenticated') !== 'true') {
+      window.location.href = 'login.html';
+    }
+
+    let API_BASE_URL = 'http://127.0.0.1:8000';
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('../config.json');
+        const data = await res.json();
+        if (data.API_BASE_URL) {
+          API_BASE_URL = data.API_BASE_URL;
+        }
+      } catch (err) {
+        console.warn("Could not load config.json, using default API base URL:", API_BASE_URL);
+      }
+    }
+
+    // Default library database state
+    let libraryData = [
+      { address: "IS694-2010", num: "IS 694", revision: "2010", added: "2026-07-24", status: "current" },
+      { address: "IS8130-1984", num: "IS 8130", revision: "1984", added: "2026-07-24", status: "current" },
+      { address: "IS5831-1984", num: "IS 5831", revision: "1984", added: "2026-07-24", status: "current" }
+    ];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadConfig();
+      // Load any stored library updates
+      const savedLib = localStorage.getItem('bis_library');
+      if (savedLib) {
+        libraryData = JSON.parse(savedLib);
+      }
+      renderLibraryTable();
+    });
+
+    function renderLibraryTable(filter = "") {
+      const tbody = document.getElementById('library-tbody');
+      tbody.innerHTML = '';
+      
+      const filtered = libraryData.filter(d => 
+        d.address.toLowerCase().includes(filter.toLowerCase()) ||
+        d.num.toLowerCase().includes(filter.toLowerCase()) ||
+        d.status.toLowerCase().includes(filter.toLowerCase())
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No matching ingested documents found.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(d => {
+        const tr = document.createElement('tr');
+        const badgeClass = d.status === 'current' ? 'badge-current' : 'badge-superseded';
+        tr.innerHTML = `
+          <td class="font-mono">${d.address}</td>
+          <td style="font-weight: 600;">${d.num}</td>
+          <td>${d.revision}</td>
+          <td>${d.added}</td>
+          <td><span class="badge ${badgeClass}">${d.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Search filter
+    document.getElementById('library-search').addEventListener('input', (e) => {
+      renderLibraryTable(e.target.value);
+    });
+
+    // File upload simulation
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const progressContainer = document.getElementById('upload-progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressStatus = document.getElementById('progress-status');
+    const summaryOverlay = document.getElementById('summary-modal-overlay');
+    const summaryBody = document.getElementById('summary-body');
+    const summaryTitle = document.getElementById('summary-title');
+    const summaryClose = document.getElementById('summary-close-btn');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    // Drag-and-drop event listeners
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (file.type !== 'application/pdf') {
+        alert("Invalid file format. Only PDF standards can be processed.");
+        return;
+      }
+
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+      progressStatus.innerText = "Uploading PDF Standard File...";
+
+      // Setup form data
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      // Extract metadata heuristics from filename
+      let isNum = "IS 694";
+      let revision = "2026";
+      const filename = file.name.toUpperCase();
+      if (filename.includes("8130")) {
+        isNum = "IS 8130";
+      } else if (filename.includes("5831")) {
+        isNum = "IS 5831";
+      }
+      
+      const revMatch = filename.match(/(\d{4})/);
+      if (revMatch) {
+        revision = revMatch[1];
+      }
+      
+      formData.append("is_number", isNum);
+      formData.append("revision_label", revision);
+
+      // Perform real file upload fetch call
+      fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(result => {
+        progressContainer.style.display = 'none';
+        
+        if (result.status === 'success') {
+          const summary = result.summary;
+          const docAddr = result.document_address;
+          
+          let supersededDocs = summary.superseded_versions || [];
+          libraryData.forEach(d => {
+            if (supersededDocs.includes(d.address)) {
+              d.status = 'superseded';
+            }
+          });
+
+          // Add the new record
+          const today = new Date().toISOString().split('T')[0];
+          libraryData.unshift({
+            address: docAddr,
+            num: isNum,
+            revision: revision,
+            added: today,
+            status: "current"
+          });
+
+          localStorage.setItem('bis_library', JSON.stringify(libraryData));
+          renderLibraryTable();
+
+          // Render summary info
+          summaryTitle.innerText = `Ingestion Report: ${docAddr}`;
+          let bodyHtml = `
+            <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.9rem;">
+              <p>The standard document has been successfully processed and structured in the database.</p>
+              
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.5rem 0;">
+                <div class="panel" style="padding:1rem; margin-bottom:0; text-align:center;">
+                  <span class="form-label">Tables Extracted</span>
+                  <span class="font-mono" style="font-size:1.5rem; font-weight:bold; color:var(--accent-action);">${summary.tables_extracted}</span>
+                </div>
+                <div class="panel" style="padding:1rem; margin-bottom:0; text-align:center;">
+                  <span class="form-label">Cells Ingested</span>
+                  <span class="font-mono" style="font-size:1.5rem; font-weight:bold; color:var(--accent-action);">${summary.cells_ingested}</span>
+                </div>
+              </div>
+          `;
+
+          if (supersededDocs.length > 0) {
+            bodyHtml += `
+              <div class="warning-banner" style="margin-bottom:0.75rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                <div>
+                  <span class="warning-title">Version Auto-Updated</span>
+                  <span class="warning-desc">Document <strong>${supersededDocs.join(', ')}</strong> has been automatically flagged as <strong>superseded</strong> by the new revision.</span>
+                </div>
+              </div>
+            `;
+          }
+
+          bodyHtml += `</div>`;
+          summaryBody.innerHTML = bodyHtml;
+          summaryOverlay.classList.add('active');
+        } else {
+          alert("Ingestion failure: " + result.detail);
+        }
+      })
+      .catch(err => {
+        console.error("Upload error:", err);
+        progressContainer.style.display = 'none';
+        alert("Failed to communicate with ingestion service.");
+      });
+    }
+
+    summaryClose.addEventListener('click', () => {
+      summaryOverlay.classList.remove('active');
+    });
+
+    // Sign out logic
+    document.getElementById('user-menu-trigger').addEventListener('click', () => {
+      if (confirm("Confirm security sign-out?")) {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+
+</body>
+</html>

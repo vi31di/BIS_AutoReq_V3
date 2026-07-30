@@ -1,0 +1,18 @@
+{
+  "wire_types": ["Copper", "Aluminium"],
+  "classes": ["Class 1", "Class 2", "Class 5", "Class 6"],
+  "materials": ["Plain Copper", "Tinned Copper", "Aluminium"],
+  "categories": ["Cables for indoor installation", "Cables for outdoor installations", "Flame retardant (FR)", "Flame retardant low smoke and halogen (FR-LSH)"],
+  "test_types": [
+    "Conductor resistance test",
+    "Thickness of thermoplastic and elastomeric insulation",
+    "High voltage test",
+    "Spark test",
+    "Flammability test",
+    "Oxygen index test",
+    "Determination of the amount of halogen acid gas evolved during combustion",
+    "Thermal stability of PVC insulation",
+    "Flex test",
+    "Persulphate test of conductor"
+  ]
+}

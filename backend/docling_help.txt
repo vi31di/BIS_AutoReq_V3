@@ -1,0 +1,428 @@
+                                                                                
+ Usage: docling convert [OPTIONS] source                                        
+                                                                                
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    source      source  PDF files to convert. Can be local file / directory │
+│                          paths or URL.                                       │
+│                          [required]                                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --from                                    TEXT             Input formats to  │
+│                                                            accept. Use 'odf' │
+│                                                            for odt, ods, and │
+│                                                            odp. Defaults to  │
+│                                                            all supported     │
+│                                                            formats.          │
+│ --to                                      [md|json|yaml|h  Specify output    │
+│                                           tml|html_split_  formats. Defaults │
+│                                           page|text|docta  to Markdown.      │
+│                                           gs|vtt|doclang|                    │
+│                                           dclx|chunks]                       │
+│ --chunks-type                             [hybrid|hierarc  Chunker type for  │
+│                                           hical]           '--to chunks'.    │
+│                                                            [default: hybrid] │
+│ --chunks-max-to…                          INTEGER          Max tokens per    │
+│                                                            chunk. Defaults   │
+│                                                            to the            │
+│                                                            tokenizer's own   │
+│                                                            limit.            │
+│ --chunks-tokeni…                          TEXT             HuggingFace       │
+│                                                            tokenizer model   │
+│                                                            name/path. Used   │
+│                                                            only with         │
+│                                                            --chunks-type     │
+│                                                            hybrid.           │
+│                                                            [default:         │
+│                                                            sentence-transfo… │
+│ --show-layout         --no-show-layout                     If enabled, the   │
+│                                                            page images will  │
+│                                                            show the          │
+│                                                            bounding-boxes of │
+│                                                            the items.        │
+│                                                            [default:         │
+│                                                            no-show-layout]   │
+│ --headers                                 TEXT             Specify http      │
+│                                                            request headers   │
+│                                                            used when         │
+│                                                            fetching url      │
+│                                                            input sources in  │
+│                                                            the form of a     │
+│                                                            JSON string       │
+│ --html-image-he…                          TEXT             Specify http      │
+│                                                            request headers   │
+│                                                            used when         │
+│                                                            fetching HTML and │
+│                                                            EPUB image        │
+│                                                            resources in the  │
+│                                                            form of a JSON    │
+│                                                            string            │
+│ --image-export-…                          [placeholder|em  Image export mode │
+│                                           bedded|referenc  for image-capable │
+│                                           ed]              document outputs  │
+│                                                            (JSON, YAML,      │
+│                                                            HTML, HTML        │
+│                                                            split-page, and   │
+│                                                            Markdown). Text,  │
+│                                                            DocTags, and      │
+│                                                            WebVTT outputs do │
+│                                                            not export        │
+│                                                            images. With      │
+│                                                            `placeholder`,    │
+│                                                            only the position │
+│                                                            of the image is   │
+│                                                            marked in the     │
+│                                                            output. In        │
+│                                                            `embedded` mode,  │
+│                                                            the image is      │
+│                                                            embedded as       │
+│                                                            base64 encoded    │
+│                                                            string. In        │
+│                                                            `referenced`      │
+│                                                            mode, the image   │
+│                                                            is exported in    │
+│                                                            PNG format and    │
+│                                                            referenced from   │
+│                                                            the main exported │
+│                                                            document.         │
+│                                                            [default:         │
+│                                                            embedded]         │
+│ --html-image-fe…                          [none|local|rem  Fetch image       │
+│                                           ote|all]         resources         │
+│                                                            referenced by     │
+│                                                            HTML and EPUB     │
+│                                                            inputs. Choose    │
+│                                                            none, local,      │
+│                                                            remote, or all.   │
+│                                                            [default: none]   │
+│ --pipeline                                [legacy|standar  Choose the        │
+│                                           d|vlm|asr]       pipeline to       │
+│                                                            process PDF or    │
+│                                                            image files.      │
+│                                                            [default:         │
+│                                                            standard]         │
+│ --vlm-model                               TEXT             Choose the VLM    │
+│                                                            preset to use     │
+│                                                            with PDF or image │
+│                                                            files. Available  │
+│                                                            presets:          │
+│                                                            smoldocling,      │
+│                                                            granite_docling,  │
+│                                                            deepseek_ocr,     │
+│                                                            granite_vision,   │
+│                                                            pixtral, got_ocr, │
+│                                                            phi4, qwen,       │
+│                                                            nanonets_ocr2,    │
+│                                                            gemma_12b,        │
+│                                                            gemma_27b,        │
+│                                                            dolphin, glm_ocr, │
+│                                                            lightonocr,       │
+│                                                            falcon_ocr,       │
+│                                                            chandra_ocr2,     │
+│                                                            dots_ocr,         │
+│                                                            dots_mocr         │
+│                                                            [default:         │
+│                                                            granite_docling]  │
+│ --asr-model                               [whisper_tiny|w  Choose the ASR    │
+│                                           hisper_small|wh  model to use with │
+│                                           isper_medium|wh  audio/video       │
+│                                           isper_base|whis  files.            │
+│                                           per_large|whisp  [default:         │
+│                                           er_turbo|whispe  whisper_tiny]     │
+│                                           r_tiny_mlx|whis                    │
+│                                           per_small_mlx|w                    │
+│                                           hisper_medium_m                    │
+│                                           lx|whisper_base                    │
+│                                           _mlx|whisper_la                    │
+│                                           rge_mlx|whisper                    │
+│                                           _turbo_mlx|whis                    │
+│                                           per_tiny_native                    │
+│                                           |whisper_small_                    │
+│                                           native|whisper_                    │
+│                                           medium_native|w                    │
+│                                           hisper_base_nat                    │
+│                                           ive|whisper_lar                    │
+│                                           ge_native|whisp                    │
+│                                           er_turbo_native                    │
+│                                           |whisper_tiny_e                    │
+│                                           n_native|whispe                    │
+│                                           r_base_en_nativ                    │
+│                                           e|whisper_small                    │
+│                                           _en_native|whis                    │
+│                                           per_medium_en_n                    │
+│                                           ative|whisper_d                    │
+│                                           istil_small_en_                    │
+│                                           native|whisper_                    │
+│                                           distil_medium_e                    │
+│                                           n_native|whispe                    │
+│                                           r_distil_large_                    │
+│                                           v3_native|whisp                    │
+│                                           er_distil_large                    │
+│                                           _v3_5_native|wh                    │
+│                                           isper_tiny_s2t|                    │
+│                                           whisper_tiny_en                    │
+│                                           _s2t|whisper_ba                    │
+│                                           se_s2t|whisper_                    │
+│                                           base_en_s2t|whi                    │
+│                                           sper_small_s2t|                    │
+│                                           whisper_small_e                    │
+│                                           n_s2t|whisper_d                    │
+│                                           istil_small_en_                    │
+│                                           s2t|whisper_med                    │
+│                                           ium_s2t|whisper                    │
+│                                           _medium_en_s2t|                    │
+│                                           whisper_distil_                    │
+│                                           medium_en_s2t|w                    │
+│                                           hisper_large_v3                    │
+│                                           _s2t|whisper_di                    │
+│                                           stil_large_v3_s                    │
+│                                           2t|whisper_dist                    │
+│                                           il_large_v3_5_s                    │
+│                                           2t|whisper_larg                    │
+│                                           e_v3_turbo_s2t]                    │
+│ --video-samplin…                          [fixed|scene]    frame sampling    │
+│                                                            mode.             │
+│                                                            [default: fixed]  │
+│ --video-frame-i…                          FLOAT            Seconds between   │
+│                                                            frames in fixed   │
+│                                                            interval mode.    │
+│                                                            [default: 10.0]   │
+│ --video-cuts-pe…                          FLOAT            Target cuts per   │
+│                                                            minute in scene   │
+│                                                            mode (overrides   │
+│                                                            prominence).      │
+│                                                            [default: 0.0]    │
+│ --video-promine…                          FLOAT            Scene change      │
+│                                                            prominence        │
+│                                                            threshold. 0 =    │
+│                                                            auto (adapts      │
+│                                                            sensitivity to    │
+│                                                            video motion;     │
+│                                                            recommended). Set │
+│                                                            a fixed value     │
+│                                                            (e.g. 0.01) only  │
+│                                                            to override.      │
+│                                                            [default: 0.0]    │
+│ --video-diariza…      --no-video-diar…                     Enable speaker    │
+│                                                            diarization (who  │
+│                                                            said what).       │
+│                                                            Requires          │
+│                                                            resemblyzer.      │
+│                                                            [default:         │
+│                                                            no-video-diariza… │
+│ --ocr                 --no-ocr                             If enabled, the   │
+│                                                            bitmap content    │
+│                                                            will be processed │
+│                                                            using OCR.        │
+│                                                            [default: ocr]    │
+│ --force-ocr           --no-force-ocr                       Replace any       │
+│                                                            existing text     │
+│                                                            with OCR          │
+│                                                            generated text    │
+│                                                            over the full     │
+│                                                            content.          │
+│                                                            [default:         │
+│                                                            no-force-ocr]     │
+│ --tables              --no-tables                          If enabled, the   │
+│                                                            table structure   │
+│                                                            model will be     │
+│                                                            used to extract   │
+│                                                            table             │
+│                                                            information.      │
+│                                                            [default: tables] │
+│ --ocr-engine                              TEXT             The OCR engine to │
+│                                                            use. When         │
+│                                                            --allow-external… │
+│                                                            is *not* set, the │
+│                                                            available values  │
+│                                                            are: auto,        │
+│                                                            easyocr,          │
+│                                                            kserve_v2_ocr,    │
+│                                                            nemotron-ocr,     │
+│                                                            ocrmac, rapidocr, │
+│                                                            tesserocr,        │
+│                                                            tesseract. Use    │
+│                                                            the option        │
+│                                                            --show-external-… │
+│                                                            to see the        │
+│                                                            options allowed   │
+│                                                            with external     │
+│                                                            plugins.          │
+│                                                            [default: auto]   │
+│ --ocr-lang                                TEXT             Provide a         │
+│                                                            comma-separated   │
+│                                                            list of languages │
+│                                                            used by the OCR   │
+│                                                            engine. Note that │
+│                                                            each OCR engine   │
+│                                                            has different     │
+│                                                            values for the    │
+│                                                            language names.   │
+│ --psm                                     INTEGER          Page Segmentation │
+│                                                            Mode for the OCR  │
+│                                                            engine (0-13).    │
+│ --pdf-backend                             [pypdfium2|docl  The PDF backend   │
+│                                           ing_parse|threa  to use.           │
+│                                           ded_docling_par  [default:         │
+│                                           se|dlparse_v1|d  docling_parse]    │
+│                                           lparse_v2|dlpar                    │
+│                                           se_v4]                             │
+│ --pdf-password                            TEXT             Password for      │
+│                                                            protected PDF     │
+│                                                            documents         │
+│ --table-mode                              [fast|accurate]  The mode to use   │
+│                                                            in the table      │
+│                                                            structure model.  │
+│                                                            [default:         │
+│                                                            accurate]         │
+│ --enrich-code         --no-enrich-code                     Enable the code   │
+│                                                            enrichment model  │
+│                                                            in the pipeline.  │
+│                                                            [default:         │
+│                                                            no-enrich-code]   │
+│ --enrich-formula      --no-enrich-for…                     Enable the        │
+│                                                            formula           │
+│                                                            enrichment model  │
+│                                                            in the pipeline.  │
+│                                                            [default:         │
+│                                                            no-enrich-formul… │
+│ --enrich-pictur…      --no-enrich-pic…                     Enable the        │
+│                                                            picture           │
+│                                                            classification    │
+│                                                            enrichment model  │
+│                                                            in the pipeline.  │
+│                                                            [default:         │
+│                                                            no-enrich-pictur… │
+│ --enrich-pictur…      --no-enrich-pic…                     Enable the        │
+│                                                            picture           │
+│                                                            description model │
+│                                                            in the pipeline.  │
+│                                                            [default:         │
+│                                                            no-enrich-pictur… │
+│ --enrich-chart-…      --no-enrich-cha…                     Enable chart data │
+│                                                            extraction from   │
+│                                                            bar, pie, and     │
+│                                                            line charts.      │
+│                                                            [default:         │
+│                                                            no-enrich-chart-… │
+│ --artifacts-path                          PATH             If provided, the  │
+│                                                            location of the   │
+│                                                            model artifacts.  │
+│ --enable-remote…      --no-enable-rem…                     Must be enabled   │
+│                                                            when using models │
+│                                                            connecting to     │
+│                                                            remote services.  │
+│                                                            [default:         │
+│                                                            no-enable-remote… │
+│ --allow-externa…      --no-allow-exte…                     Must be enabled   │
+│                                                            for loading       │
+│                                                            modules from      │
+│                                                            third-party       │
+│                                                            plugins.          │
+│                                                            [default:         │
+│                                                            no-allow-externa… │
+│ --show-external…      --no-show-exter…                     List the          │
+│                                                            third-party       │
+│                                                            plugins which are │
+│                                                            available when    │
+│                                                            the option        │
+│                                                            --allow-external… │
+│                                                            is set.           │
+│                                                            [default:         │
+│                                                            no-show-external… │
+│ --abort-on-error      --no-abort-on-e…                     If enabled, the   │
+│                                                            processing will   │
+│                                                            be aborted when   │
+│                                                            the first error   │
+│                                                            is encountered.   │
+│                                                            [default:         │
+│                                                            no-abort-on-erro… │
+│ --output                                  PATH             Output directory  │
+│                                                            where results are │
+│                                                            saved.            │
+│                                                            [default: .]      │
+│ --verbose         -v                      INTEGER          Set the verbosity │
+│                                                            level. -v for     │
+│                                                            info logging, -vv │
+│                                                            for debug         │
+│                                                            logging.          │
+│                                                            [default: 0]      │
+│ --quiet           -q                                       Suppress the      │
+│                                                            per-file progress │
+│                                                            log emitted at    │
+│                                                            default           │
+│                                                            verbosity,        │
+│                                                            restoring fully   │
+│                                                            silent output     │
+│                                                            (warnings and     │
+│                                                            errors only). Has │
+│                                                            no effect when    │
+│                                                            -v/--verbose is   │
+│                                                            given.            │
+│ --debug-visuali…      --no-debug-visu…                     Enable debug      │
+│                                                            output which      │
+│                                                            visualizes the    │
+│                                                            PDF cells         │
+│                                                            [default:         │
+│                                                            no-debug-visuali… │
+│ --debug-visuali…      --no-debug-visu…                     Enable debug      │
+│                                                            output which      │
+│                                                            visualizes the    │
+│                                                            OCR cells         │
+│                                                            [default:         │
+│                                                            no-debug-visuali… │
+│ --debug-visuali…      --no-debug-visu…                     Enable debug      │
+│                                                            output which      │
+│                                                            visualizes the    │
+│                                                            layout clusters   │
+│                                                            [default:         │
+│                                                            no-debug-visuali… │
+│ --debug-visuali…      --no-debug-visu…                     Enable debug      │
+│                                                            output which      │
+│                                                            visualizes the    │
+│                                                            table cells       │
+│                                                            [default:         │
+│                                                            no-debug-visuali… │
+│ --version                                                  Show version      │
+│                                                            information.      │
+│ --document-time…                          FLOAT            The timeout for   │
+│                                                            processing each   │
+│                                                            document, in      │
+│                                                            seconds.          │
+│ --num-threads                             INTEGER          Number of threads │
+│                                                            [default: 4]      │
+│ --release-nativ…                          INTEGER          Release native    │
+│                                                            parser memory     │
+│                                                            after every N     │
+│                                                            decoded pages     │
+│                                                            when using the    │
+│                                                            threaded          │
+│                                                            docling-parse     │
+│                                                            backend.          │
+│                                                            [default: 128]    │
+│ --device                                  [auto|cpu|cuda|  Accelerator       │
+│                                           mps|xpu]         device            │
+│                                                            [default: auto]   │
+│ --logo                                                     Docling logo      │
+│ --page-batch-si…                          INTEGER          Number of pages   │
+│                                                            processed in one  │
+│                                                            batch. Default: 4 │
+│                                                            [default: 4]      │
+│ --profiling           --no-profiling                       If enabled, it    │
+│                                                            summarizes        │
+│                                                            profiling details │
+│                                                            for all           │
+│                                                            conversion        │
+│                                                            stages.           │
+│                                                            [default:         │
+│                                                            no-profiling]     │
+│ --save-profiling      --no-save-profi…                     If enabled, it    │
+│                                                            saves the         │
+│                                                            profiling         │
+│                                                            summaries to      │
+│                                                            json.             │
+│                                                            [default:         │
+│                                                            no-save-profilin… │
+│ --help                                                     Show this message │
+│                                                            and exit.         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,0 +1,47 @@
+import subprocess
+import webbrowser
+import time
+import sys
+
+def main():
+    print("Starting BIS LIS Compliance Lookup System...")
+    
+    # 1. Start Backend FastAPI Server
+    backend = subprocess.Popen(
+        ["./.venv/bin/uvicorn", "api.index:app", "--host", "127.0.0.1", "--port", "8000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    
+    # 2. Start Frontend Static Server
+    frontend = subprocess.Popen(
+        [sys.executable, "-m", "http.server", "3000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    
+    # 3. Give servers a brief moment to boot
+    time.sleep(1.5)
+    
+    # 4. Launch login screen
+    login_url = "http://localhost:3000/src/pages/login.html"
+    print(f"Launching web interface at: {login_url}")
+    webbrowser.open(login_url)
+    
+    print("\n--- System Status: RUNNING ---")
+    print("Press Ctrl+C in this terminal window to stop the servers.")
+    
+    try:
+        # Keep main thread alive
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down servers...")
+        backend.terminate()
+        frontend.terminate()
+        backend.wait()
+        frontend.wait()
+        print("System stopped.")
+
+if __name__ == "__main__":
+    main()

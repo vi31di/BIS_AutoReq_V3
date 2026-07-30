@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Requirement Lookup - BIS LIS</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .grid-container {
+      display: grid;
+      grid-template-columns: 450px 1fr;
+      gap: 1.5rem;
+    }
+    .value-display {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--accent-action);
+      background-color: #f1f5f9;
+      border: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      margin: 1rem 0;
+      display: inline-block;
+      min-width: 200px;
+      text-align: center;
+    }
+    .size-btn {
+      width: 100%;
+      text-align: left;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      padding: 0.6rem 0.75rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.15s ease;
+    }
+    .size-btn:hover {
+      border-color: var(--accent-action);
+    }
+    .size-value {
+      font-weight: bold;
+      color: var(--accent-action);
+    }
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed var(--border-color);
+      cursor: pointer;
+    }
+    .recent-item:hover {
+      background-color: #f8fafc;
+    }
+    .recent-item:last-child {
+      border-bottom: none;
+    }
+    .collapsible-trigger {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .collapsible-content {
+      display: none;
+      padding: 1rem 0;
+    }
+    .collapsible-content.active {
+      display: block;
+    }
+    @media (max-width: 900px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar Navigation Shell -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      BIS LIS Dashboard
+    </div>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Requirement Lookup</a></li>
+      <li><a href="library.html">Document Library</a></li>
+    </ul>
+    <div class="nav-user" id="user-menu-trigger">
+      <span id="nav-username">LIS Engineer</span>
+      <div class="avatar">E</div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="grid-container">
+      
+      <!-- Left Column: Lookup Form & Recents -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Requirement Query Form</h2>
+          </div>
+          <form id="lookup-form">
+
+            <!-- 1. Test Specification (At the Top) -->
+            <div class="form-group">
+              <label for="test-type" class="form-label">Test Specification</label>
+              <select id="test-type" class="form-control" required>
+                <option value="">Select Test Specification</option>
+              </select>
+            </div>
+
+            <!-- 2. Insulation Type (New Dropdown) -->
+            <div class="form-group" id="group-cable-type" style="display: none;">
+              <label for="cable-type" class="form-label">Insulation Type</label>
+              <select id="cable-type" class="form-control">
+                <option value="">Select Insulation Type</option>
+                <option value="Standard PVC">Standard PVC</option>
+                <option value="FR">FR (Flame Retardant)</option>
+                <option value="FR-LSH">FR-LSH (Low Smoke Halogen)</option>
+              </select>
+            </div>
+
+            <!-- 3. Wire Type (Material) -->
+            <div class="form-group">
+              <label for="wire-type" class="form-label">Wire Type</label>
+              <select id="wire-type" class="form-control" required>
+                <option value="">Select Wire Material</option>
+              </select>
+            </div>
+            
+            <!-- 4. Conductor Class -->
+            <div class="form-group">
+              <label for="class-type" class="form-label">Conductor Class</label>
+              <select id="class-type" class="form-control" required>
+                <option value="">Select Conductor Class</option>
+              </select>
+            </div>
+            
+            <!-- 5. Coating Option -->
+            <div class="form-group">
+              <label for="coating-type" class="form-label">Plain / Tinned Coating</label>
+              <select id="coating-type" class="form-control" required>
+                <option value="">Select Coating Option</option>
+              </select>
+            </div>
+
+            <!-- 5b. Conductor Wire Diameter -->
+            <div class="form-group" id="group-wire-diameter" style="display: none;">
+              <label for="wire-diameter" class="form-label">Conductor Wire Diameter (mm)</label>
+              <input type="number" id="wire-diameter" class="form-control" placeholder="e.g. 0.15, 0.30" step="any" min="0.01">
+            </div>
+
+            <!-- 6. Nominal Size -->
+            <div class="form-group">
+              <label class="form-label">Nominal Size (mm²)</label>
+              <button type="button" id="size-trigger" class="size-btn">
+                <span>Enter numerical value...</span>
+                <span class="size-value" id="size-display">Not Set</span>
+              </button>
+              <input type="hidden" id="size-value" required>
+            </div>
+
+            <!-- 8. Dynamic High Voltage Option -->
+            <div class="form-group" id="group-hv-option" style="display: none;">
+              <label for="hv-option" class="form-label">High Voltage Test Method</label>
+              <select id="hv-option" class="form-control">
+                <option value="">Select High Voltage Method</option>
+                <option value="Standard High Voltage Test">Standard High Voltage Test</option>
+                <option value="Water Immersion Test">Water Immersion Test</option>
+                <option value="Spark Test Alternative">Spark Test Alternative</option>
+              </select>
+            </div>
+
+            <!-- 9. Dynamic Cable Diameter -->
+            <div class="form-group" id="group-cable-diameter" style="display: none;">
+              <label for="cable-diameter" class="form-label">Cable Diameter Option</label>
+              <select id="cable-diameter" class="form-control">
+                <option value="">Select Cable Diameter</option>
+                <option value="Diameter ≤ 12.5 mm">Diameter ≤ 12.5 mm</option>
+                <option value="Diameter > 12.5 mm">Diameter > 12.5 mm</option>
+              </select>
+            </div>
+
+            <!-- 10. Dynamic Component Selector -->
+            <div class="form-group" id="group-component" style="display: none;">
+              <label for="component-type" class="form-label">Component under Test</label>
+              <select id="component-type" class="form-control">
+                <option value="">Select Component</option>
+                <option value="Insulation">Insulation</option>
+                <option value="Sheath">Sheath</option>
+                <option value="Conductor">Conductor</option>
+              </select>
+            </div>
+
+            <!-- 11. Dynamic PVC Insulation Type Selector -->
+            <div class="form-group" id="group-insulation-type" style="display: none;">
+              <label for="insulation-type" class="form-label">PVC Insulation Type</label>
+              <select id="insulation-type" class="form-control">
+                <option value="">Select PVC Insulation Type</option>
+                <option value="Type A">Type A</option>
+                <option value="Type B">Type B</option>
+                <option value="Type C">Type C</option>
+                <option value="Type D">Type D</option>
+              </select>
+            </div>
+
+            <!-- 12. Dynamic PVC Sheath Type Selector -->
+            <div class="form-group" id="group-sheath-type" style="display: none;">
+              <label for="sheath-type" class="form-label">PVC Sheath Type</label>
+              <select id="sheath-type" class="form-control">
+                <option value="">Select PVC Sheath Type</option>
+                <option value="ST1">ST1 (General purpose sheath)</option>
+                <option value="ST2">ST2 (Heat resisting sheath)</option>
+                <option value="ST3">ST3 (General purpose flexible sheath)</option>
+              </select>
+            </div>
+
+            <!-- 13. Dynamic Cable Core Type Selector -->
+            <div class="form-group" id="group-core-type" style="display: none;">
+              <label for="core-type" class="form-label">Cable Core Type</label>
+              <select id="core-type" class="form-control">
+                <option value="">Select Core Type</option>
+                <option value="single_core">Single-Core</option>
+                <option value="multi_core">Multi-Core</option>
+              </select>
+            </div>
+
+            <!-- 14. Dynamic HV Test Variant Selector -->
+            <div class="form-group" id="group-hv-variant" style="display: none;">
+              <label for="hv-variant" class="form-label">HV Test Variant</label>
+              <select id="hv-variant" class="form-control">
+                <option value="">Select HV Test Variant</option>
+                <option value="water_immersion">Water Immersion Test (60°C)</option>
+                <option value="room_temperature">Room Temperature Test</option>
+              </select>
+            </div>
+
+            <!-- 15. Number of Cores Selector -->
+            <div class="form-group" id="group-cores-count" style="display: none;">
+              <label for="cores-count" class="form-label">Number of Cores</label>
+              <select id="cores-count" class="form-control">
+                <option value="">Select Cores Count</option>
+                <option value="1">1 Core</option>
+                <option value="2">2 Cores</option>
+                <option value="3">3 Cores</option>
+                <option value="4">4 Cores</option>
+                <option value="5">5 Cores or more</option>
+              </select>
+            </div>
+
+            <!-- 16. Cable Sheathing Status Selector -->
+            <div class="form-group" id="group-sheathing-status" style="display: none;">
+              <label for="sheathing-status" class="form-label">Cable Sheathing Status</label>
+              <select id="sheathing-status" class="form-control">
+                <option value="">Select Sheathing Status</option>
+                <option value="sheathed">Sheathed</option>
+                <option value="unsheathed">Unsheathed</option>
+              </select>
+            </div>
+
+            <!-- 17. Aluminium Conductor Grade Selector -->
+            <div class="form-group" id="group-conductor-grade" style="display: none;">
+              <label for="conductor-grade" class="form-label">Aluminium Conductor Grade</label>
+              <select id="conductor-grade" class="form-control">
+                <option value="">Select Aluminium Grade</option>
+                <option value="Grade 0">Grade 0 (Annealed)</option>
+                <option value="Grade H2">Grade H2 (Half-Hard)</option>
+                <option value="Grade H4">Grade H4 (Hard)</option>
+              </select>
+            </div>
+
+            <!-- 18. Timing Option (Before/After Ageing) -->
+            <div class="form-group" id="group-timing" style="display: none;">
+              <label for="timing" class="form-label">Measurement Timing</label>
+              <select id="timing" class="form-control">
+                <option value="">Select Timing Option</option>
+                <option value="before">Before Ageing Treatment</option>
+                <option value="after">After Ageing Treatment</option>
+              </select>
+            </div>
+
+
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Execute Search Query</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Recent Queries</h2>
+          </div>
+          <div id="recent-queries-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Results & Path Timeline -->
+      <div>
+        <div class="panel" style="min-height: 480px; display: flex; flex-direction: column;">
+          <div class="panel-header">
+            <h2 class="panel-title">Lookup Results Viewport</h2>
+          </div>
+          
+          <div id="result-empty-state" style="flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-muted);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p>Select lookup parameters and execute query to retrieve target specifications.</p>
+          </div>
+
+          <div id="result-loading-state" style="display: none; flex: 1; align-items: center; justify-content: center; flex-direction: column; color: var(--text-muted);">
+            <span class="spinner" style="width: 32px; height: 32px; border-width: 3px; border-top-color: var(--accent-action);"></span>
+            <p style="margin-top: 1rem;">Traversing RAG database index...</p>
+          </div>
+
+          <div id="result-content-state" style="display: none; flex: 1;">
+            <!-- Warning Banner -->
+            <div id="needs-reverification-banner" class="warning-banner" style="display: none;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <span class="warning-title">Re-verification Required</span>
+                <span class="warning-desc">The database row is flag-marked as unverified. Ensure manual cross-validation.</span>
+              </div>
+            </div>
+
+            <p class="form-label" style="margin-top: 0.5rem;">Resolved Specification Value</p>
+            <div class="value-display font-mono" id="resolved-value">-</div>
+            
+            <div class="collapsible-trigger" id="path-trigger">
+              <span>Resolution Path timeline</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            
+            <div class="collapsible-content" id="path-content">
+              <div class="timeline font-mono" id="path-timeline">
+                <!-- Dynamically populated steps -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Size Dialog Box Modal -->
+  <div class="modal-overlay" id="size-modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Enter Nominal Size</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="size-input" class="form-label">Nominal Cross-Sectional Area (mm²)</label>
+          <input type="number" id="size-input" class="form-control" placeholder="e.g. 1.5, 2.5, 4.0" step="any" min="0.1">
+          <div id="size-modal-error" class="error-text">Please enter a valid numeric cable size.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="size-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="size-confirm-btn" class="btn btn-primary">Confirm Size</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Authentication Check
+    if (sessionStorage.getItem('bis_authenticated') !== 'true') {
+      window.location.href = 'login.html';
+    }
+
+    let API_BASE_URL = 'http://127.0.0.1:8000';
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('../config.json');
+        const data = await res.json();
+        if (data.API_BASE_URL) {
+          API_BASE_URL = data.API_BASE_URL;
+        }
+      } catch (err) {
+        console.warn("Could not load config.json, using default API base URL:", API_BASE_URL);
+      }
+    }
+
+    // Dynamic dropdown loading from real backend
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadConfig();
+      fetch(`${API_BASE_URL}/api/options`)
+        .then(res => res.json())
+        .then(data => {
+          populateDropdown('wire-type', data.wire_types || []);
+          populateDropdown('class-type', data.classes || []);
+          populateDropdown('coating-type', data.materials || []);
+          populateDropdown('category', data.categories || []);
+          populateDropdown('test-type', data.test_types || []);
+        })
+        .catch(err => {
+          console.error("Failed to load options metadata, falling back to cached options.", err);
+          fetch('../api/options.json')
+            .then(res => res.json())
+            .then(data => {
+              populateDropdown('wire-type', data.wire_types);
+              populateDropdown('class-type', data.classes);
+              populateDropdown('coating-type', data.materials);
+              populateDropdown('category', data.categories);
+              populateDropdown('test-type', data.test_types);
+            });
+        });
+        
+      updateRecentQueriesUI();
+    });
+
+    function populateDropdown(id, list) {
+      const select = document.getElementById(id);
+      if (!select) return;
+      // Clear existing options except placeholder
+      select.innerHTML = `<option value="">${select.options[0].text}</option>`;
+      
+      let items = list;
+      if (id === 'test-type') {
+        const seen = new Set();
+        const cleaned = [];
+        list.forEach(item => {
+          let cleanName = item.replace(/^\s*\d+[\s\)\.）\-]*\s*/g, '').trim();
+          if (cleanName.toLowerCase().includes("ageing")) {
+            cleanName = "Ageing in air oven";
+          } else if (cleanName.toLowerCase().includes("loss of mass")) {
+            cleanName = "Loss of mass test";
+          } else if (cleanName.toLowerCase().includes("shrinkage")) {
+            cleanName = "Shrinkage test";
+          } else if (cleanName.toLowerCase().includes("thermal stability")) {
+            cleanName = "Thermal stability";
+          } else if (cleanName.toLowerCase().includes("insulation resistance")) {
+            cleanName = "Insulation resistance test";
+          } else if (cleanName.toLowerCase().includes("thickness of insulation")) {
+            cleanName = "Thickness of insulation/sheath";
+          }
+          if (cleanName && !seen.has(cleanName.toLowerCase())) {
+            seen.add(cleanName.toLowerCase());
+            cleaned.push(cleanName);
+          }
+        });
+        items = cleaned;
+      }
+      
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.innerText = item;
+        select.appendChild(opt);
+      });
+    }
+
+    // Size modal logic
+    const sizeTrigger = document.getElementById('size-trigger');
+    const sizeOverlay = document.getElementById('size-modal-overlay');
+    const sizeInput = document.getElementById('size-input');
+    const sizeDisplay = document.getElementById('size-display');
+    const sizeValueInput = document.getElementById('size-value');
+    const sizeConfirm = document.getElementById('size-confirm-btn');
+    const sizeCancel = document.getElementById('size-cancel-btn');
+    const sizeModalError = document.getElementById('size-modal-error');
+
+    sizeTrigger.addEventListener('click', () => {
+      sizeModalError.style.display = 'none';
+      sizeInput.value = sizeValueInput.value;
+      sizeOverlay.classList.add('active');
+      sizeInput.focus();
+    });
+
+    sizeCancel.addEventListener('click', () => {
+      sizeOverlay.classList.remove('active');
+    });
+
+    sizeConfirm.addEventListener('click', () => {
+      const val = parseFloat(sizeInput.value);
+      if (isNaN(val) || val <= 0) {
+        sizeModalError.style.display = 'block';
+        return;
+      }
+      sizeValueInput.value = val;
+      sizeDisplay.innerText = val + " mm²";
+      sizeOverlay.classList.remove('active');
+    });
+
+    // Collapsible path timeline logic
+    const pathTrigger = document.getElementById('path-trigger');
+    const pathContent = document.getElementById('path-content');
+    pathTrigger.addEventListener('click', () => {
+      pathContent.classList.toggle('active');
+    });
+
+    const testTypeSelect = document.getElementById('test-type');
+    const cableTypeSelect = document.getElementById('cable-type');
+    const groupCableType = document.getElementById('group-cable-type');
+    const groupWireDiameter = document.getElementById('group-wire-diameter');
+    const wireDiameterInput = document.getElementById('wire-diameter');
+    
+    const groupCategory = document.getElementById('group-category');
+    const groupComponent = document.getElementById('group-component');
+    const groupInsulationType = document.getElementById('group-insulation-type');
+    const groupSheathType = document.getElementById('group-sheath-type');
+    
+    const componentSelect = document.getElementById('component-type');
+    const insulationSelect = document.getElementById('insulation-type');
+    const sheathSelect = document.getElementById('sheath-type');
+
+    const groupHvOption = document.getElementById('group-hv-option');
+    const hvOptionSelect = document.getElementById('hv-option');
+
+    const groupCableDiameter = document.getElementById('group-cable-diameter');
+    const cableDiameterSelect = document.getElementById('cable-diameter');
+
+    const groupCoreType = document.getElementById('group-core-type');
+    const coreTypeSelect = document.getElementById('core-type');
+    const groupHvVariant = document.getElementById('group-hv-variant');
+    const hvVariantSelect = document.getElementById('hv-variant');
+    const groupCoresCount = document.getElementById('group-cores-count');
+    const coresCountSelect = document.getElementById('cores-count');
+    const groupSheathingStatus = document.getElementById('group-sheathing-status');
+    const sheathingStatusSelect = document.getElementById('sheathing-status');
+    const groupConductorGrade = document.getElementById('group-conductor-grade');
+    const conductorGradeSelect = document.getElementById('conductor-grade');
+    const groupTiming = document.getElementById('group-timing');
+    const timingSelect = document.getElementById('timing');
+
+    // Matrix/Physical property tests that require component under test (Insulation/Sheath)
+    const matrixTests = [
+      "ageing",
+      "cold bend",
+      "cold impact",
+      "heat shock",
+      "hot deformation",
+      "loss of mass",
+      "shrinkage",
+      "tensile strength",
+      "thickness of insulation",
+      "thermal stability",
+      "insulation resistance"
+    ];
+
+    const wireTypeSelect = document.getElementById('wire-type');
+
+    testTypeSelect.addEventListener('change', updateFormVisibility);
+    cableTypeSelect.addEventListener('change', updateFormVisibility);
+    componentSelect.addEventListener('change', triggerComponentChange);
+    coresCountSelect.addEventListener('change', updateFormVisibility);
+    sheathingStatusSelect.addEventListener('change', updateFormVisibility);
+    conductorGradeSelect.addEventListener('change', updateFormVisibility);
+    coreTypeSelect.addEventListener('change', updateFormVisibility);
+    timingSelect.addEventListener('change', updateFormVisibility);
+    hvVariantSelect.addEventListener('change', updateFormVisibility);
+    wireTypeSelect.addEventListener('change', updateFormVisibility);
+
+    function updateFormVisibility() {
+      const test = testTypeSelect.value;
+      const test_lower = (test || "").toLowerCase();
+
+      // Hide all dynamic elements by default
+      groupCableType.style.display = 'none';
+      cableTypeSelect.required = false;
+
+      groupWireDiameter.style.display = 'none';
+      wireDiameterInput.required = false;
+
+      document.getElementById('wire-type').closest('.form-group').style.display = 'none';
+      document.getElementById('wire-type').required = false;
+
+      document.getElementById('class-type').closest('.form-group').style.display = 'none';
+      document.getElementById('class-type').required = false;
+
+      document.getElementById('coating-type').closest('.form-group').style.display = 'none';
+      document.getElementById('coating-type').required = false;
+
+      document.getElementById('size-trigger').closest('.form-group').style.display = 'none';
+      document.getElementById('size-value').required = false;
+
+      groupComponent.style.display = 'none';
+      componentSelect.required = false;
+      groupInsulationType.style.display = 'none';
+      insulationSelect.required = false;
+      groupSheathType.style.display = 'none';
+      sheathSelect.required = false;
+
+      groupHvOption.style.display = 'none';
+      hvOptionSelect.required = false;
+
+      groupCableDiameter.style.display = 'none';
+      cableDiameterSelect.required = false;
+
+      groupCoreType.style.display = 'none';
+      coreTypeSelect.required = false;
+      groupHvVariant.style.display = 'none';
+      hvVariantSelect.required = false;
+      groupCoresCount.style.display = 'none';
+      coresCountSelect.required = false;
+      groupSheathingStatus.style.display = 'none';
+      sheathingStatusSelect.required = false;
+      groupConductorGrade.style.display = 'none';
+      conductorGradeSelect.required = false;
+      groupTiming.style.display = 'none';
+      timingSelect.required = false;
+
+      if (!test) return;
+
+      // Determine visibility based on test
+      const isMatrix = matrixTests.some(kw => test_lower.includes(kw)) && !test_lower.includes("additional ageing");
+
+      if (test_lower.includes("conductor resistance")) {
+        document.getElementById('wire-type').closest('.form-group').style.display = 'block';
+        document.getElementById('wire-type').required = true;
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('coating-type').closest('.form-group').style.display = 'block';
+        document.getElementById('coating-type').required = true;
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+      }
+      else if (test_lower.includes("annealing")) {
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('coating-type').closest('.form-group').style.display = 'block';
+        document.getElementById('coating-type').required = true;
+        groupWireDiameter.style.display = 'block';
+        wireDiameterInput.required = true;
+      }
+      else if (test_lower.includes("wrapping test")) {
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+      }
+      else if (test_lower.includes("persulphate")) {
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('coating-type').closest('.form-group').style.display = 'block';
+        document.getElementById('coating-type').required = true;
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+      }
+      else if (test_lower.includes("high voltage")) {
+        groupCoreType.style.display = 'block';
+        coreTypeSelect.required = true;
+        groupHvVariant.style.display = 'block';
+        hvVariantSelect.required = true;
+      }
+      else if (test_lower.includes("spark test") || test_lower.includes("spark")) {
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+      }
+      else if (test_lower.includes("halogen") || test_lower.includes("smoke density") || test_lower.includes("oxygen index") || test_lower.includes("flammability") || test_lower.includes("additional ageing")) {
+        groupCableType.style.display = 'block';
+        cableTypeSelect.required = true;
+      }
+      else if (test_lower.includes("flex test") || test_lower.includes("flex")) {
+        document.getElementById('wire-type').closest('.form-group').style.display = 'block';
+        document.getElementById('wire-type').required = true;
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('coating-type').closest('.form-group').style.display = 'block';
+        document.getElementById('coating-type').required = true;
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+      }
+      else if (test_lower.includes("thickness")) {
+        document.getElementById('class-type').closest('.form-group').style.display = 'block';
+        document.getElementById('class-type').required = true;
+        document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+        document.getElementById('size-value').required = true;
+        groupCoresCount.style.display = 'block';
+        coresCountSelect.required = true;
+        groupSheathingStatus.style.display = 'block';
+        sheathingStatusSelect.required = true;
+        
+        groupComponent.style.display = 'block';
+        componentSelect.required = true;
+        triggerComponentChange();
+      }
+      else if (isMatrix) {
+        const isSimplified = test_lower.includes("ageing") || 
+                             test_lower.includes("loss of mass") || 
+                             test_lower.includes("shrinkage") || 
+                             test_lower.includes("thermal stability") ||
+                             test_lower.includes("hot deformation") ||
+                             test_lower.includes("heat shock") ||
+                             test_lower.includes("cold bend") ||
+                             test_lower.includes("cold impact") ||
+                             test_lower.includes("tensile");
+
+        if (!isSimplified) {
+          document.getElementById('wire-type').closest('.form-group').style.display = 'block';
+          document.getElementById('wire-type').required = true;
+          document.getElementById('class-type').closest('.form-group').style.display = 'block';
+          document.getElementById('class-type').required = true;
+          document.getElementById('coating-type').closest('.form-group').style.display = 'block';
+          document.getElementById('coating-type').required = true;
+          document.getElementById('size-trigger').closest('.form-group').style.display = 'block';
+          document.getElementById('size-value').required = true;
+        }
+
+        if (test_lower.includes("ageing") || test_lower.includes("loss of mass")) {
+          groupTiming.style.display = 'block';
+          timingSelect.required = true;
+        }
+
+        groupComponent.style.display = 'block';
+        componentSelect.required = true;
+        triggerComponentChange();
+      }
+    }
+
+    function triggerComponentChange() {
+      const comp = componentSelect.value;
+      const test = testTypeSelect.value;
+      const test_lower = (test || "").toLowerCase();
+
+      // For Tensile test specifically
+      if (test_lower.includes("tensile")) {
+        if (comp === "Insulation") {
+          groupInsulationType.style.display = 'block';
+          insulationSelect.required = true;
+          
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+          document.getElementById('wire-type').closest('.form-group').style.display = 'none';
+          document.getElementById('wire-type').required = false;
+        } else if (comp === "Sheath") {
+          groupSheathType.style.display = 'block';
+          sheathSelect.required = true;
+          
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+          document.getElementById('wire-type').closest('.form-group').style.display = 'none';
+          document.getElementById('wire-type').required = false;
+        } else if (comp === "Conductor") {
+          document.getElementById('wire-type').closest('.form-group').style.display = 'block';
+          document.getElementById('wire-type').required = true;
+          
+          const wire = document.getElementById('wire-type').value;
+          if (wire === "Aluminium") {
+            groupConductorGrade.style.display = 'block';
+            conductorGradeSelect.required = true;
+          } else {
+            groupConductorGrade.style.display = 'none';
+            conductorGradeSelect.required = false;
+          }
+          
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+        } else {
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+          document.getElementById('wire-type').closest('.form-group').style.display = 'none';
+          document.getElementById('wire-type').required = false;
+        }
+      } else {
+        // For other matrix tests
+        if (comp === "Insulation") {
+          groupInsulationType.style.display = 'block';
+          insulationSelect.required = true;
+          
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+        } else if (comp === "Sheath") {
+          groupSheathType.style.display = 'block';
+          sheathSelect.required = true;
+          
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+        } else if (comp === "Conductor") {
+          groupConductorGrade.style.display = 'block';
+          conductorGradeSelect.required = true;
+          
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+        } else {
+          groupInsulationType.style.display = 'none';
+          insulationSelect.required = false;
+          groupSheathType.style.display = 'none';
+          sheathSelect.required = false;
+          groupConductorGrade.style.display = 'none';
+          conductorGradeSelect.required = false;
+        }
+      }
+    }
+
+    // Lookup submit logic
+    const form = document.getElementById('lookup-form');
+    const emptyState = document.getElementById('result-empty-state');
+    const loadingState = document.getElementById('result-loading-state');
+    const contentState = document.getElementById('result-content-state');
+    const resolvedValueEl = document.getElementById('resolved-value');
+    const pathTimelineEl = document.getElementById('path-timeline');
+    const reverificationBanner = document.getElementById('needs-reverification-banner');
+ 
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const test = testTypeSelect.value;
+      const test_lower = test.toLowerCase();
+      const isMatrix = matrixTests.some(kw => test_lower.includes(kw)) && !test_lower.includes("additional ageing");
+
+      // Client-side validation of ONLY visible/required fields
+      const requiredInputs = Array.from(form.querySelectorAll('select[required], input[required]'));
+      let isValid = true;
+      requiredInputs.forEach(el => {
+        if (!el.value) {
+          isValid = false;
+        }
+      });
+
+      if (!isValid) {
+        alert("Please specify all required parameters for the selected test.");
+        return;
+      }
+
+      // Read values
+      const wire = document.getElementById('wire-type').value;
+      const cls = document.getElementById('class-type').value;
+      const coat = document.getElementById('coating-type').value;
+      const size = document.getElementById('size-value').value;
+      const cable_type = cableTypeSelect.value;
+
+      let cat = "";
+      if (isMatrix) {
+        const comp = componentSelect.value;
+        if (comp === "Insulation") {
+          cat = insulationSelect.value;
+        } else if (comp === "Sheath") {
+          cat = sheathSelect.value;
+        }
+      }
+
+      emptyState.style.display = 'none';
+      contentState.style.display = 'none';
+      loadingState.style.display = 'flex';
+ 
+      // Real backend API lookup call
+      fetch(`${API_BASE_URL}/api/lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test_name: test,
+          is_number: null,
+          wire_class: cls || null,
+          wire_diameter: wireDiameterInput.value ? parseFloat(wireDiameterInput.value) : null,
+          size_mm2: size ? parseFloat(size) : null,
+          material: (componentSelect.value === "Conductor" ? wire : (coat || wire || null)),
+          category: cat || cable_type || null,
+          cable_type: cable_type || null,
+          hv_method: hvOptionSelect.value || null,
+          cable_diameter: cableDiameterSelect.value || null,
+          component: componentSelect.value || null,
+          timing: timingSelect.value || null,
+          core_type: coreTypeSelect.value || null,
+          hv_variant: hvVariantSelect.value || null,
+          cores_count: coresCountSelect.value ? parseInt(coresCountSelect.value) : null,
+          sheathing_status: sheathingStatusSelect.value || null,
+          conductor_grade: conductorGradeSelect.value || null,
+        })
+      })
+      .then(res => res.json())
+      .then(result => {
+        loadingState.style.display = 'none';
+        contentState.style.display = 'block';
+        
+        const val = result.value || "Requires Verification";
+        const needs_reverification = result.needs_reverification;
+        
+        resolvedValueEl.innerText = val;
+        reverificationBanner.style.display = needs_reverification ? 'flex' : 'none';
+ 
+        // Render path timeline
+        pathTimelineEl.innerHTML = '';
+        const path = result.resolution_path || [];
+        path.forEach(step => {
+          const stepDiv = document.createElement('div');
+          stepDiv.className = 'timeline-step';
+          stepDiv.innerHTML = `
+            <div class="timeline-meta">${step.step || step.type || 'Hop'}</div>
+            <div class="timeline-content">${step.address || step.val}</div>
+          `;
+          pathTimelineEl.appendChild(stepDiv);
+        });
+ 
+        // Add to recent queries
+        addRecentQuery({ wire: coat || wire || "Cable", cls: cls || "N/A", size: size || "N/A", test, val });
+      })
+      .catch(err => {
+        console.error("Lookup error:", err);
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'flex';
+        alert("Failed to communicate with backend service.");
+      });
+    });
+ 
+    function addRecentQuery(q) {
+      let recents = JSON.parse(sessionStorage.getItem('recent_lookups') || '[]');
+      recents.unshift(q);
+      recents = recents.slice(0, 5); // Keep last 5
+      sessionStorage.setItem('recent_lookups', JSON.stringify(recents));
+      updateRecentQueriesUI();
+    }
+
+    function updateRecentQueriesUI() {
+      const listEl = document.getElementById('recent-queries-list');
+      const recents = JSON.parse(sessionStorage.getItem('recent_lookups') || '[]');
+      
+      if (recents.length === 0) {
+        listEl.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:1rem 0;">No queries processed this session.</div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      recents.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'recent-item';
+        item.innerHTML = `
+          <span>${r.wire} ${r.cls} - ${r.size}mm²</span>
+          <span style="font-weight:bold; color:var(--accent-action);">${r.val}</span>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    // Sign out logic
+    document.getElementById('user-menu-trigger').addEventListener('click', () => {
+      if (confirm("Confirm security sign-out?")) {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+
+</body>
+</html>

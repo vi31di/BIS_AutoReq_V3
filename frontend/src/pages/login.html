@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - BIS Wire-Testing LIS</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .login-panel {
+      width: 100%;
+      max-width: 400px;
+    }
+    .institutional-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .institutional-header h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+    .institutional-header p {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
+    }
+    .login-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+    }
+    .login-footer a {
+      color: var(--accent-action);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="login-panel panel">
+      <div class="institutional-header">
+        <h1>Bureau of Indian Standards</h1>
+        <p>Laboratory Information System</p>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group">
+          <label for="email" class="form-label">Email Address</label>
+          <input type="email" id="email" class="form-control" placeholder="engineer@bis.gov.in" required>
+          <div id="email-error" class="error-text">Please enter a valid institutional email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+          <div id="password-error" class="error-text">Password must be at least 8 characters long.</div>
+        </div>
+
+        <div id="auth-error" class="warning-banner" style="display: none; margin-top: 1rem;">
+          <span class="warning-title">Authentication Failed</span>
+          <span class="warning-desc" id="auth-error-desc">Invalid institutional credentials. Please try again.</span>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+          <span id="btn-spinner" class="spinner" style="display: none;"></span>
+          <span id="btn-text">Authenticate Credentials</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <a href="#">Forgot password?</a>
+        <span style="color: var(--text-muted);">Secure Gateway v2.4</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const emailError = document.getElementById('email-error');
+      const passwordError = document.getElementById('password-error');
+      const authError = document.getElementById('auth-error');
+      const submitBtn = document.getElementById('submit-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+
+      // Reset states
+      emailError.style.display = 'none';
+      passwordError.style.display = 'none';
+      authError.style.display = 'none';
+      
+      let hasError = false;
+
+      // Simple email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailInput.value)) {
+        emailError.style.display = 'block';
+        hasError = true;
+      }
+
+      // Password length check
+      if (passwordInput.value.length < 8) {
+        passwordError.style.display = 'block';
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      // Show loading spinner
+      submitBtn.disabled = true;
+      spinner.style.display = 'inline-block';
+      btnText.innerText = 'Verifying security signature...';
+
+      // Simulate API Authentication check
+      setTimeout(() => {
+        // For prototype purposes, let's accept any correct-looking credentials
+        if (emailInput.value.includes('error')) {
+          submitBtn.disabled = false;
+          spinner.style.display = 'none';
+          btnText.innerText = 'Authenticate Credentials';
+          authError.style.display = 'flex';
+        } else {
+          // Success: Store user token and redirect to lookup
+          sessionStorage.setItem('bis_authenticated', 'true');
+          sessionStorage.setItem('bis_user', emailInput.value);
+          window.location.href = 'index.html';
+        }
+      }, 1200);
+    });
+  </script>
+
+</body>
+</html>
