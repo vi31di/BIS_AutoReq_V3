@@ -13,18 +13,19 @@ def main():
         stderr=subprocess.DEVNULL
     )
     
-    # 2. Start Frontend Static Server
+    # 2. Start Frontend Vite Server
     frontend = subprocess.Popen(
-        [sys.executable, "-m", "http.server", "3000"],
+        ["npm", "run", "dev"],
+        cwd="../frontend",
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
     
     # 3. Give servers a brief moment to boot
-    time.sleep(1.5)
+    time.sleep(2.0)
     
-    # 4. Launch login screen
-    login_url = "http://localhost:3000/src/pages/login.html"
+    # 4. Launch login screen (Vite opens index.html which redirects to login.html if not authenticated)
+    login_url = "http://localhost:3000/pages/login.html"
     print(f"Launching web interface at: {login_url}")
     webbrowser.open(login_url)
     
