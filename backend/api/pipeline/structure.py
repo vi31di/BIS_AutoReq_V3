@@ -111,18 +111,32 @@ def process_table_cells(cells):
         })
     return processed_cells
 
-def ingest_document(conn, json_data, metadata):
+async def ingest_document(db, json_data, metadata):
     """
     Ingests a Docling JSON document into the database schema.
     """
-    cursor = conn.cursor()
+    is_postgres = getattr(db, "pg_conn", None) is not None
     
+    def serialize_json(data):
+        if is_postgres:
+            return data
+        else:
+            return json.dumps(data) if data is not None else None
+            
     # 1. Insert into is_documents
     doc_addr = metadata["document_address"]
-    cursor.execute("""
-        INSERT OR REPLACE INTO is_documents (is_number, revision_label, document_address, valid_from, valid_to, is_current, superseded_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
+    await db.execute("""
+        INSERT INTO is_documents (is_number, revision_label, document_address, valid_from, valid_to, is_current, superseded_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (document_address)
+        DO UPDATE SET
+            is_number = EXCLUDED.is_number,
+            revision_label = EXCLUDED.revision_label,
+            valid_from = EXCLUDED.valid_from,
+            valid_to = EXCLUDED.valid_to,
+            is_current = EXCLUDED.is_current,
+            superseded_by = EXCLUDED.superseded_by
+    """, 
         metadata["is_number"],
         metadata["revision_label"],
         doc_addr,
@@ -130,7 +144,7 @@ def ingest_document(conn, json_data, metadata):
         metadata.get("valid_to"),
         metadata.get("is_current", True),
         metadata.get("superseded_by")
-    ))
+    )
     
     texts = json_data.get("texts", [])
     
@@ -143,7 +157,6 @@ def ingest_document(conn, json_data, metadata):
         text = item.get("text", "").strip()
         
         if label == "section_header":
-            # Attempt to split section number from heading text
             match = re.match(r"^([A-Z]-\d+|\d+(?:\.\d+)*)\s*(.*)$", text)
             if match:
                 sec_num, head_text = match.groups()
@@ -166,34 +179,37 @@ def ingest_document(conn, json_data, metadata):
                 
     # Batch insert clauses
     for c in clauses:
-        cursor.execute("""
-            INSERT OR REPLACE INTO clauses_meta (clause_address, document_address, heading_text, section_number, body_text)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
+        await db.execute("""
+            INSERT INTO clauses_meta (clause_address, document_address, heading_text, section_number, body_text)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (clause_address)
+            DO UPDATE SET
+                document_address = EXCLUDED.document_address,
+                heading_text = EXCLUDED.heading_text,
+                section_number = EXCLUDED.section_number,
+                body_text = EXCLUDED.body_text
+        """, 
             c["clause_address"],
             c["document_address"],
             c["heading_text"],
             c["section_number"],
             c["body_text"].strip()
-        ))
+        )
         
-        # Prose-based reference detection (Mechanism B)
-        # Search body text for "IS <number>" pattern
         citations = re.findall(r"IS\s*(\d+)", c["body_text"])
         for cit in set(citations):
             target_addr = resolve_target_address(f"IS {cit}")
             if target_addr:
-                cursor.execute("""
+                await db.execute("""
                     INSERT INTO edges (source_address, target_address, target_facets, edge_type)
-                    VALUES (?, ?, ?, ?)
-                """, (
+                    VALUES ($1, $2, $3, $4)
+                """, 
                     c["clause_address"],
                     target_addr,
                     None,
                     "clause_reference"
-                ))
+                )
 
-    # Helper to resolve caption references
     def resolve_caption(table_item):
         caption_parts = []
         for cap_ref in table_item.get("captions", []):
@@ -206,7 +222,7 @@ def ingest_document(conn, json_data, metadata):
                     pass
         return " ".join(caption_parts) if caption_parts else None
 
-    # 3. Insert tables_meta, table_cells, and column-based edges (Mechanism A)
+    # 3. Insert tables_meta, table_cells, and column-based edges
     for t_idx, table in enumerate(json_data.get("tables", []), start=1):
         table_addr = f"{doc_addr}_T{t_idx}"
         caption_text = resolve_caption(table)
@@ -215,20 +231,24 @@ def ingest_document(conn, json_data, metadata):
         table_type = classify_table_type(cells)
         facets = extract_facets(caption_text)
         
-        # Insert table metadata
-        cursor.execute("""
-            INSERT OR REPLACE INTO tables_meta (table_address, document_address, caption_text, table_type, facets, search_vector)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
+        await db.execute("""
+            INSERT INTO tables_meta (table_address, document_address, caption_text, table_type, facets, search_vector)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (table_address)
+            DO UPDATE SET
+                document_address = EXCLUDED.document_address,
+                caption_text = EXCLUDED.caption_text,
+                table_type = EXCLUDED.table_type,
+                facets = EXCLUDED.facets
+        """, 
             table_addr,
             doc_addr,
             caption_text,
             table_type,
-            json.dumps(facets),
-            None  # search_vector is tsvector in Postgres
-        ))
+            serialize_json(facets),
+            None
+        )
         
-        # Process and insert table cells
         processed_cells = process_table_cells(cells)
         for p_cell in processed_cells:
             cell = p_cell["cell"]
@@ -236,36 +256,42 @@ def ingest_document(conn, json_data, metadata):
             c = cell.get("start_col_offset_idx", 0)
             cell_addr = f"{table_addr}_R{r}_C{c}"
             
-            cursor.execute("""
-                INSERT OR REPLACE INTO table_cells (cell_address, table_address, row_label, col_label, value, bbox, confidence, page, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            await db.execute("""
+                INSERT INTO table_cells (cell_address, table_address, row_label, col_label, value, bbox, confidence, page, source)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (cell_address)
+                DO UPDATE SET
+                    table_address = EXCLUDED.table_address,
+                    row_label = EXCLUDED.row_label,
+                    col_label = EXCLUDED.col_label,
+                    value = EXCLUDED.value,
+                    bbox = EXCLUDED.bbox,
+                    confidence = EXCLUDED.confidence,
+                    page = EXCLUDED.page,
+                    source = EXCLUDED.source
+            """, 
                 cell_addr,
                 table_addr,
                 p_cell["row_label"],
                 p_cell["col_label"],
                 cell.get("text", "").strip(),
-                json.dumps(cell.get("bbox", {})),
+                serialize_json(cell.get("bbox", {})),
                 cell.get("confidence"),
                 cell.get("page_no"),
                 "OCR"
-            ))
+            )
             
-            # Column-based reference detection (Mechanism A)
-            # If the column label or header indicates a reference, map it
             col_label_lower = p_cell["col_label"].lower()
             if any(kw in col_label_lower for kw in ["ref to is", "is no", "part no", "clause"]):
                 val = cell.get("text", "").strip()
                 target_addr = resolve_target_address(val)
                 if target_addr:
-                    cursor.execute("""
+                    await db.execute("""
                         INSERT INTO edges (source_address, target_address, target_facets, edge_type)
-                        VALUES (?, ?, ?, ?)
-                    """, (
+                        VALUES ($1, $2, $3, $4)
+                    """, 
                         cell_addr,
                         target_addr,
                         None,
                         "column_reference"
-                    ))
-                    
-    conn.commit()
+                    )

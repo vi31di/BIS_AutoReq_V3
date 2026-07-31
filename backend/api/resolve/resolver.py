@@ -254,12 +254,12 @@ async def lexically_match_starting_point(db: DBConnection, test_name: str, is_nu
             SELECT c.clause_address AS address, 'clause' AS type, c.heading_text, c.body_text
             FROM clauses_meta c
             JOIN is_documents d ON c.document_address = d.document_address
-            WHERE d.is_current = 1 AND ({clause_conds}) {doc_filter}
+            WHERE d.is_current = TRUE AND ({clause_conds}) {doc_filter}
             UNION ALL
             SELECT t.table_address AS address, 'table' AS type, t.caption_text AS heading_text, '' AS body_text
             FROM tables_meta t
             JOIN is_documents d ON t.document_address = d.document_address
-            WHERE d.is_current = 1 AND ({table_conds}) {doc_filter_table}
+            WHERE d.is_current = TRUE AND ({table_conds}) {doc_filter_table}
             LIMIT 50
         """
         bindings = [f"%{w}%" for w in words]

@@ -17,16 +17,16 @@ async def migrate():
     # 1. Connect to Postgres and execute schema
     print("Connecting to PostgreSQL...")
     conn_pg = await asyncpg.connect(postgres_dsn)
-    try:
-        print("Initializing schema and indexes...")
-        # Split sql script into individual commands to avoid asyncpg multi-command execution issues with DDL
-        for command in schema_sql.split(";"):
-            cmd_clean = command.strip()
-            if cmd_clean:
+    print("Initializing schema and indexes...")
+    # Split sql script into individual commands to avoid asyncpg DDL issues
+    for command in schema_sql.split(";"):
+        cmd_clean = command.strip()
+        if cmd_clean:
+            try:
                 await conn_pg.execute(cmd_clean)
-        print("PostgreSQL schema successfully initialized.")
-    except Exception as e:
-        print(f"Warning during schema initialization: {e}")
+            except Exception as e:
+                print(f"Warning: DDL command failed: {cmd_clean[:50]}... -> {e}")
+    print("PostgreSQL schema initialization finished.")
 
     # 2. Connect to SQLite
     conn_sl = sqlite3.connect(sqlite_db_path)

@@ -151,16 +151,8 @@ async def upload_document(
                 # Also purge cache entries pointing to old document versions
                 await db.execute("DELETE FROM resolution_cache WHERE document_versions_used LIKE '%' || $1 || '%'", prev["document_address"])
                 
-            # 3. Ingest PDF contents (A1-A6 pipeline)
-            # Adapt SQLite commit connection wrapper for synchronous ingest function
-            # Since sqlite3 connection commit is transactional, we use a thread-safe cursor block
-            if IS_POSTGRES:
-                # In PostgreSQL, we run ingestion using cursor executing statements directly
-                # (For production, structure.py functions can be wrapped for Postgres)
-                pass
-            else:
-                sqlite_conn = db.sqlite_conn
-                ingest_document(sqlite_conn, json_data, metadata)
+            # 3. Ingest PDF contents (A1-A6 pipeline) using the unified async database runner
+            await ingest_document(db, json_data, metadata)
                 
             # Clean up temp file
             os.remove(temp_path)
