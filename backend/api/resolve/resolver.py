@@ -34,6 +34,13 @@ def get_conductor_resolution_path(clause_addr: str, table_addr: str, cell_addres
         path.append({"step": f"Cell ({cell_name})", "address": cell, "type": "cell"})
     return path
 
+def get_nearest_standard_size(size: float) -> float:
+    standard_sizes = [
+        0.5, 0.75, 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 
+        70.0, 95.0, 120.0, 150.0, 185.0, 240.0, 300.0, 400.0, 500.0, 630.0
+    ]
+    return min(standard_sizes, key=lambda x: (abs(x - size), -x))
+
 async def save_resolution_cache(db: DBConnection, q_hash: str, cell_address: str, val: Optional[str], path: List[Dict[str, Any]], versions_used: set) -> None:
     if IS_POSTGRES:
         await db.execute("""
@@ -63,7 +70,6 @@ async def get_dropdown_options(db: DBConnection) -> Dict[str, List[str]]:
         "Conductor resistance test",
         "Test for halogen acid gas evolution",
         "Flammability test",
-        "Flex test",
         "Heat shock test",
         "High voltage test",
         "Hot deformation test",
@@ -113,10 +119,16 @@ async def get_dropdown_options(db: DBConnection) -> Dict[str, List[str]]:
                 
             # Clean name
             clean = re.sub(r"^(?:[a-zA-Z\d\-\*]{1,3}[）\)\.]\s*|[ixvIXV]{1,4}[）\)\.]\s*|\d+[\.\)]\s*)+", "", val).strip()
+            # Clean starting parentheses, dashes, or dots left by OCR noise
+            clean = re.sub(r"^[)\.\-\s]+", "", clean).strip()
             
             # Normalize common variations
             clean_lower = clean.lower()
-            if "ageing" in clean_lower:
+            if "flex" in clean_lower:
+                continue  # Filter out Flex test completely
+            elif "temperature index" in clean_lower:
+                continue  # Filter out Temperature index completely
+            elif "ageing" in clean_lower:
                 clean = "Ageing in air oven"
             elif "loss of mass" in clean_lower:
                 clean = "Loss of mass test"
@@ -126,8 +138,12 @@ async def get_dropdown_options(db: DBConnection) -> Dict[str, List[str]]:
                 clean = "Thermal stability"
             elif "insulation resistance" in clean_lower:
                 clean = "Insulation resistance test"
-            elif "thickness of insulation" in clean_lower or "thickness of thermoplastic" in clean_lower or "thickness of insulation/sheath" in clean_lower:
+            elif "thickness" in clean_lower:
                 clean = "Thickness of insulation/sheath"
+            elif "conductor resistance" in clean_lower:
+                clean = "Conductor resistance test"
+            elif "hot deformation" in clean_lower:
+                clean = "Hot deformation test"
             elif "cold bend" in clean_lower:
                 clean = "Cold bend test (for diameter <= 12.5 mm)"
             elif "cold impact" in clean_lower:
@@ -142,12 +158,12 @@ async def get_dropdown_options(db: DBConnection) -> Dict[str, List[str]]:
                 clean = "High voltage test"
             elif "spark" in clean_lower:
                 clean = "Spark test"
-            elif "flex" in clean_lower:
-                clean = "Flex test"
             elif "persulphate" in clean_lower:
                 clean = "Persulphate test"
             elif "annealing" in clean_lower:
                 clean = "Annealing test (for copper)"
+            elif "wrapping" in clean_lower:
+                clean = "Wrapping test (for aluminium)"
             elif "tensile" in clean_lower and ("insulation" in clean_lower or "sheath" in clean_lower or "conductor" in clean_lower or "strength" in clean_lower or "aluminium" in clean_lower or "copper" in clean_lower):
                 clean = "Tensile strength and elongation at break"
                 
@@ -376,7 +392,7 @@ async def resolve_lookup(db: DBConnection, payload: Dict[str, Any], max_hops: in
     payload["test_name"] = test_name
     is_num = payload.get("is_number")
     wire_class = payload.get("class") or ""
-    size = payload.get("size_mm2")
+    
     material = payload.get("material") or ""
     category = payload.get("category") or ""
     
@@ -387,6 +403,24 @@ async def resolve_lookup(db: DBConnection, payload: Dict[str, Any], max_hops: in
         payload["category"] = cable_type
     
     test_lower = test_name.lower()
+    
+    # Validate nominal cross-sectional area for size-dependent tests
+    size = payload.get("size_mm2")
+    if size is not None and ("resistance" in test_lower or "thickness" in test_lower or "annealing" in test_lower or "tensile" in test_lower or "wrapping" in test_lower):
+        try:
+            parsed_size = float(size)
+            standard_sizes = [
+                0.5, 0.75, 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 
+                70.0, 95.0, 120.0, 150.0, 185.0, 240.0, 300.0, 400.0, 500.0, 630.0
+            ]
+            if not any(abs(parsed_size - x) < 0.01 for x in standard_sizes):
+                return {
+                    "value": f"Nominal cross-sectional area {size} mm² is not a standard size in the database. Standard sizes are: 0.5, 0.75, 1.0, 1.5, 2.5, 4.0, 6.0, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240, 300, 400, 500, 630.",
+                    "resolution_path": [],
+                    "needs_reverification": False
+                }
+        except Exception:
+            pass
     
     # 2. Normalize Consolidated Test Names to Database Starting Points
     if "persulphate" in test_lower:
@@ -1040,19 +1074,11 @@ async def resolve_lookup(db: DBConnection, payload: Dict[str, Any], max_hops: in
             }
 
     elif "smoke density" in test_lower:
-        cat = (payload.get("category") or "").upper().strip()
-        if "FR-LSH" in cat or "FRLSH" in cat:
-            return {
-                "value": "Smoke density rating: 60% (Max.) (Clause 10.8)",
-                "resolution_path": [{"step": "Direct Clause Read", "address": "IS694-2010_S10.8", "type": "clause"}],
-                "needs_reverification": False
-            }
-        else:
-            return {
-                "value": "N/A (Only applicable to FR-LSH category cables)",
-                "resolution_path": [],
-                "needs_reverification": False
-            }
+        return {
+            "value": "Smoke density rating: 60% (Max.) (Clause 10.8)",
+            "resolution_path": [{"step": "Direct Clause Read", "address": "IS694-2010_S10.8", "type": "clause"}],
+            "needs_reverification": False
+        }
 
     elif "insulation resistance" in test_lower:
         comp = (payload.get("component") or "Insulation").lower()

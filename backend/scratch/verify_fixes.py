@@ -547,7 +547,7 @@ async def main():
         # Test Case 56: Dropdown options dynamic retrieval check
         opts = await get_dropdown_options(db)
         print("Dropdown test types count:", len(opts["test_types"]))
-        assert len(opts["test_types"]) >= 22
+        assert len(opts["test_types"]) >= 20
         assert "Ageing in air oven" in opts["test_types"]
 
         # Test Case 57: Cold impact sheath ST1 (-5°C)
