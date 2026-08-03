@@ -6,7 +6,14 @@ import os
 import datetime
 
 sqlite_db_path = "bis_database.db"
-postgres_dsn = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/bis_database")
+postgres_dsn = os.environ.get("DATABASE_URL")
+if not postgres_dsn or not (postgres_dsn.startswith("postgresql://") or postgres_dsn.startswith("postgres://")):
+    print("\n[Error] Invalid or empty DATABASE_URL environment variable.")
+    print("Please specify a valid PostgreSQL DSN connection string.")
+    print("\nUsage Example:")
+    print("  DATABASE_URL=\"postgresql://postgres:password@host:port/database\" PYTHONPATH=. ./.venv/bin/python migrate_to_postgres.py\n")
+    import sys
+    sys.exit(1)
 schema_path = "db/schema.sql"
 
 async def migrate():
