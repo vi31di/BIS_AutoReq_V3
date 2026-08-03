@@ -56,17 +56,26 @@
         <p>Requirement Fetching System, NROL, Mohali</p>
       </div>
 
+      <h2 id="auth-title" style="font-size: 1rem; text-align: center; text-transform: uppercase; margin-bottom: 1rem; color: var(--accent-action);">Authenticate Credentials</h2>
+
       <form id="login-form" novalidate>
         <div class="form-group">
           <label for="email" class="form-label">Email Address</label>
           <input type="email" id="email" class="form-control" placeholder="engineer@bis.gov.in" required>
-          <div id="email-error" class="error-text">Please enter a valid institutional email address.</div>
+          <div id="email-error" class="error-text">Please enter a valid email address.</div>
         </div>
 
         <div class="form-group">
           <label for="password" class="form-label">Password</label>
           <input type="password" id="password" class="form-control" placeholder="••••••••" required>
           <div id="password-error" class="error-text">Password must be at least 8 characters long.</div>
+        </div>
+
+        <div class="form-group" id="remember-me-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+          <label style="display: flex; align-items: center; font-size: 0.85rem; cursor: pointer; color: var(--text-muted);">
+            <input type="checkbox" id="remember-me" style="margin-right: 0.5rem; cursor: pointer;">
+            Save Login (Remember Me)
+          </label>
         </div>
 
         <div id="auth-error" class="warning-banner" style="display: none; margin-top: 1rem;">
@@ -81,7 +90,7 @@
       </form>
 
       <div class="login-footer">
-        <a href="#">Forgot password?</a>
+        <a href="#" id="toggle-auth-mode">Don't have an account? Sign Up</a>
         <span style="color: var(--text-muted);">Secure Gateway v2.4</span>
       </div>
     </div>
@@ -103,7 +112,58 @@
   </footer>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', function(event) {
+    let API_BASE_URL = 'http://127.0.0.1:8000';
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('../config.json');
+        const data = await res.json();
+        if (data.API_BASE_URL) {
+          API_BASE_URL = data.API_BASE_URL;
+        }
+      } catch (err) {
+        console.warn("Could not load config.json, using default API base URL:", API_BASE_URL);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadConfig();
+      // Check if they are already authenticated via saved login (Remember Me)
+      if (localStorage.getItem('bis_authenticated') === 'true') {
+        window.location.href = 'index.html';
+      }
+    });
+
+    let isSignUp = false;
+    const toggleBtn = document.getElementById('toggle-auth-mode');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const rememberMeGroup = document.getElementById('remember-me-group');
+    const authTitle = document.getElementById('auth-title');
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      isSignUp = !isSignUp;
+      
+      // Reset state & clear errors
+      document.getElementById('email-error').style.display = 'none';
+      document.getElementById('password-error').style.display = 'none';
+      document.getElementById('auth-error').style.display = 'none';
+      
+      if (isSignUp) {
+        authTitle.innerText = 'Create Account';
+        btnText.innerText = 'Register & Create Account';
+        toggleBtn.innerText = 'Already have an account? Sign In';
+        rememberMeGroup.style.display = 'none';
+      } else {
+        authTitle.innerText = 'Authenticate Credentials';
+        btnText.innerText = 'Authenticate Credentials';
+        toggleBtn.innerText = "Don't have an account? Sign Up";
+        rememberMeGroup.style.display = 'flex';
+      }
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async function(event) {
       event.preventDefault();
       
       const emailInput = document.getElementById('email');
@@ -111,11 +171,10 @@
       const emailError = document.getElementById('email-error');
       const passwordError = document.getElementById('password-error');
       const authError = document.getElementById('auth-error');
-      const submitBtn = document.getElementById('submit-btn');
+      const authErrorDesc = document.getElementById('auth-error-desc');
       const spinner = document.getElementById('btn-spinner');
-      const btnText = document.getElementById('btn-text');
+      const rememberMe = document.getElementById('remember-me');
 
-      // Reset states
       emailError.style.display = 'none';
       passwordError.style.display = 'none';
       authError.style.display = 'none';
@@ -140,23 +199,75 @@
       // Show loading spinner
       submitBtn.disabled = true;
       spinner.style.display = 'inline-block';
-      btnText.innerText = 'Verifying security signature...';
+      btnText.innerText = isSignUp ? 'Creating your account...' : 'Verifying security signature...';
 
-      // Simulate API Authentication check
-      setTimeout(() => {
-        // For prototype purposes, let's accept any correct-looking credentials
-        if (emailInput.value.includes('error')) {
-          submitBtn.disabled = false;
-          spinner.style.display = 'none';
-          btnText.innerText = 'Authenticate Credentials';
-          authError.style.display = 'flex';
+      const endpoint = isSignUp ? `${API_BASE_URL}/api/auth/signup` : `${API_BASE_URL}/api/auth/login`;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.value, password: passwordInput.value })
+        });
+
+        if (response.ok) {
+          if (isSignUp) {
+            alert("Account registered successfully! Please log in.");
+            isSignUp = false;
+            authTitle.innerText = 'Authenticate Credentials';
+            btnText.innerText = 'Authenticate Credentials';
+            toggleBtn.innerText = "Don't have an account? Sign Up";
+            rememberMeGroup.style.display = 'flex';
+            passwordInput.value = '';
+          } else {
+            // Success: Store user token and redirect to lookup
+            if (rememberMe.checked) {
+              localStorage.setItem('bis_authenticated', 'true');
+              localStorage.setItem('bis_user', emailInput.value);
+            } else {
+              sessionStorage.setItem('bis_authenticated', 'true');
+              sessionStorage.setItem('bis_user', emailInput.value);
+            }
+            window.location.href = 'index.html';
+          }
         } else {
-          // Success: Store user token and redirect to lookup
-          sessionStorage.setItem('bis_authenticated', 'true');
-          sessionStorage.setItem('bis_user', emailInput.value);
-          window.location.href = 'index.html';
+          const data = await response.json();
+          let errMsg = "Authentication failed. Invalid email or password.";
+          
+          if (isSignUp) {
+            if (data.detail === "email_exists") {
+              errMsg = 'This email is already registered. <a href="#" id="error-redirect-link" style="color:var(--accent-action); text-decoration:underline; font-weight:600; cursor:pointer;">Click here to login.</a>';
+            } else {
+              errMsg = "Registration failed. Please check your credentials.";
+            }
+          }
+          
+          authErrorDesc.innerHTML = errMsg;
+          authError.style.display = 'flex';
+
+          const redirectLink = document.getElementById('error-redirect-link');
+          if (redirectLink) {
+            redirectLink.addEventListener('click', (e) => {
+              e.preventDefault();
+              isSignUp = false;
+              authTitle.innerText = 'Authenticate Credentials';
+              btnText.innerText = 'Authenticate Credentials';
+              toggleBtn.innerText = "Don't have an account? Sign Up";
+              rememberMeGroup.style.display = 'flex';
+              authError.style.display = 'none';
+              passwordInput.value = '';
+            });
+          }
         }
-      }, 1200);
+      } catch (err) {
+        console.error(err);
+        authErrorDesc.innerText = "Connection error. Please ensure the backend service is running.";
+        authError.style.display = 'flex';
+      } finally {
+        submitBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.innerText = isSignUp ? 'Register & Create Account' : 'Authenticate Credentials';
+      }
     });
   </script>
 

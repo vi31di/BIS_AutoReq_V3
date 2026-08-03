@@ -168,8 +168,8 @@
   </div>
 
   <script>
-    // Authentication Check
-    if (sessionStorage.getItem('bis_authenticated') !== 'true') {
+    // Authentication Check (inspect both sessionStorage and localStorage)
+    if (sessionStorage.getItem('bis_authenticated') !== 'true' && localStorage.getItem('bis_authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
 
@@ -393,6 +393,7 @@
     document.getElementById('user-menu-trigger').addEventListener('click', () => {
       if (confirm("Confirm security sign-out?")) {
         sessionStorage.clear();
+        localStorage.clear();
         window.location.href = 'login.html';
       }
     });

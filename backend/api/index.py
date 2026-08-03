@@ -1,15 +1,31 @@
 import os
 import shutil
+import hashlib
+import secrets
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
-from api.db import DBConnection, init_db_connection
+from api.db import DBConnection, init_db_connection, IS_POSTGRES
 from api.resolve.resolver import get_dropdown_options, resolve_lookup
 from api.pipeline.structure import ingest_document
 
 app = FastAPI(title="BIS LIS Compliance Backend", version="2.4")
+
+# Cryptographic password hashing helpers
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return f"{salt}:{dk.hex()}"
+
+def verify_password(password: str, hashed: str) -> bool:
+    try:
+        salt, key_hex = hashed.split(":")
+        dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+        return secrets.compare_digest(dk.hex(), key_hex)
+    except Exception:
+        return False
 
 # CORS middleware config
 app.add_middleware(
@@ -39,9 +55,32 @@ class LookupRequest(BaseModel):
     conductor_grade: Optional[str] = None
     wire_diameter: Optional[float] = None
 
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
 @app.on_event("startup")
 async def startup_event():
     await init_db_connection()
+    async with DBConnection() as db:
+        if IS_POSTGRES:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
 @app.get("/api/options")
 async def get_options():
@@ -177,3 +216,41 @@ async def upload_document(
             if os.path.exists(temp_path):
                 os.remove(temp_path)
             raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/signup")
+async def signup(req: AuthRequest):
+    email = req.email.strip().lower()
+    password = req.password
+    
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+        
+    async with DBConnection() as db:
+        # Check if user exists
+        existing = await db.fetchrow("SELECT id FROM users WHERE email = $1", email)
+        if existing:
+            raise HTTPException(status_code=400, detail="email_exists")
+            
+        # Hash password and insert
+        hashed = hash_password(password)
+        await db.execute("INSERT INTO users (email, password_hash) VALUES ($1, $2)", email, hashed)
+        
+    return {"status": "success", "message": "User registered successfully."}
+
+@app.post("/api/auth/login")
+async def login(req: AuthRequest):
+    email = req.email.strip().lower()
+    password = req.password
+    
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+        
+    async with DBConnection() as db:
+        user = await db.fetchrow("SELECT password_hash FROM users WHERE email = $1", email)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
+            
+        if not verify_password(password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
+            
+    return {"status": "success", "email": email}
