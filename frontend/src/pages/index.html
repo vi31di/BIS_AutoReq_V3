@@ -390,10 +390,7 @@
   </div>
 
   <script>
-    // Authentication Check (inspect both sessionStorage and localStorage)
-    if (sessionStorage.getItem('bis_authenticated') !== 'true' && localStorage.getItem('bis_authenticated') !== 'true') {
-      window.location.href = 'login.html';
-    }
+
 
     let API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -968,13 +965,9 @@
       });
     }
 
-    // Sign out logic
+    // Navigate to landing page
     document.getElementById('user-menu-trigger').addEventListener('click', () => {
-      if (confirm("Confirm security sign-out?")) {
-        sessionStorage.clear();
-        localStorage.clear();
-        window.location.href = 'login.html';
-      }
+      window.location.href = 'login.html';
     });
   </script>
 
