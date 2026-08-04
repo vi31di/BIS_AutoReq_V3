@@ -222,7 +222,7 @@ async def lexically_match_starting_point(db: DBConnection, test_name: str, is_nu
     """
     query_term = test_name.replace("'", "''")
     
-    use_postgres_search = IS_POSTGRES
+    use_postgres_search = False
     if use_postgres_search:
         doc_filter_val = "%"
         if is_number:
@@ -235,7 +235,13 @@ async def lexically_match_starting_point(db: DBConnection, test_name: str, is_nu
                 SELECT c.clause_address AS address, 'clause' AS type
                 FROM clauses_meta c
                 JOIN is_documents d ON c.document_address = d.document_address
-                WHERE d.is_current = TRUE AND d.document_address LIKE $2 AND (c.heading_text @@@ $1 OR c.body_text @@@ $1)
+                WHERE d.is_current = TRUE 
+                  AND d.document_address LIKE $2 
+                  AND (c.heading_text @@@ $1 OR c.body_text @@@ $1)
+                  AND c.clause_address NOT LIKE '%_H%'
+                  AND c.clause_address NOT LIKE '%_S0%'
+                  AND c.clause_address NOT LIKE '%_S1%'
+                  AND c.clause_address NOT LIKE '%_S2%'
                 UNION ALL
                 SELECT t.table_address AS address, 'table' AS type
                 FROM tables_meta t
