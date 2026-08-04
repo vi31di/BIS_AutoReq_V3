@@ -1532,12 +1532,11 @@ async def resolve_lookup(db: DBConnection, payload: Dict[str, Any], max_hops: in
                     
                     row_val = parse_float(row_lbl)
                     if size is not None and row_val is not None and abs(row_val - float(size)) < 0.01:
-                        # Match material / coating words (e.g. "plain" or "tinned" or "aluminium")
                         mat_lower = (material or "").lower()
                         if "tinned" in mat_lower and "tinned" in col_lbl:
                             target_cell = c
                             break
-                        elif "plain" in mat_lower and "plain" in col_lbl and "tinned" not in col_lbl:
+                        elif ("plain" in mat_lower or "copper" in mat_lower or not mat_lower) and "plain" in col_lbl and "tinned" not in col_lbl:
                             target_cell = c
                             break
                         elif "aluminium" in mat_lower and "aluminium" in col_lbl:
